@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 
-# Use package-style import to match tests which import as `app.main`
 from app.routers.env_router import router as env_router
 
 

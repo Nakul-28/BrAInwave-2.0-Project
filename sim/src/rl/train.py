@@ -1,30 +1,48 @@
 from stable_baselines3 import PPO
-import gym
-from gym import spaces
 import numpy as np
 
-class DelhiEvacuationEnv(gym.Env):
-    def __init__(self):
-        super(DelhiEvacuationEnv, self).__init__()
-        self.action_space = spaces.Discrete(2)  # Example: 0 = do nothing, 1 = evacuate
-        self.observation_space = spaces.Box(low=0, high=1, shape=(10,), dtype=np.float32)  # Example observation space
+# Use the gymnasium-based environment from the project
+from src.envs.delhi_evacuation_env import DelhiEvacuationEnv
+
+
+class GymnasiumToGymWrapper:
+    """Minimal adapter to present a gymnasium.Env like a gym.Env for SB3.
+
+    It wraps the reset/step calling convention. This avoids requiring the
+    optional package `gymnasium-to-gym` and keeps the project self-contained.
+    """
+
+    def __init__(self, env: DelhiEvacuationEnv):
+        self.env = env
+        # Expose gym-like attributes
+        self.action_space = env.action_space
+        self.observation_space = env.observation_space
 
     def reset(self):
-        self.state = np.random.rand(10)  # Example initial state
-        return self.state
+        # Gym expects reset() -> obs; gymnasium returns (obs, info)
+        obs, _info = self.env.reset()
+        return obs
 
     def step(self, action):
-        # Implement the logic for state transition and reward calculation
-        self.state = np.random.rand(10)  # Example state transition
-        reward = 1.0  # Example reward
-        done = False  # Example termination condition
-        return self.state, reward, done, {}
+        # gymnasium returns (obs, reward, terminated, truncated, info)
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        done = bool(terminated or truncated)
+        return obs, float(reward), done, info
 
-def train_model():
-    env = DelhiEvacuationEnv()
+    def render(self, mode="human"):
+        return self.env.render(mode=mode)
+
+    def close(self):
+        return self.env.close()
+
+
+def train_model(total_timesteps: int = 10000, save_path: str = "delhi_evacuation_model"):
+    raw_env = DelhiEvacuationEnv()
+    env = GymnasiumToGymWrapper(raw_env)
     model = PPO("MlpPolicy", env, verbose=1)
-    model.learn(total_timesteps=10000)
-    model.save("delhi_evacuation_model")
+    model.learn(total_timesteps=total_timesteps)
+    model.save(save_path)
+
 
 if __name__ == "__main__":
     train_model()
