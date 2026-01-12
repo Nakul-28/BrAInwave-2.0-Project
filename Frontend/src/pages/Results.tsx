@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { simulateDisaster } from '../services/api';
 import type { SimulationResponse, SimulationRequest } from '../types/simulation';
 
@@ -9,36 +11,37 @@ interface LocationState {
 }
 
 /**
- * Results Page — God-Mode Control Room
+ * Results Page — "God-Mode Control Room"
  * 
- * "The disaster already ended. The system already stabilized the city.
- *  This screen is what remains afterward."
+ * "A system awareness. A decision already made."
  * 
- * Design Pillars:
- * - City-as-Substrate: Faint depth field with parallax
- * - Six Relics: Spatial anchors on different depth planes
- * - Data as Motion: Halos, pulses, not numbers
- * - Ambient Breathing: Ultra-slow drift, light sweeps
- * - Final Statement: System voice, not UI explanation
+ * Design Elements:
+ * - Substrate: Tilted, ghostly city map.
+ * - Relics: Floating spatial anchors representing mastery.
+ * - Energy: Pulse/Glow indicating metric success.
+ * - Silence: Minimal text, no charts.
  */
 const Results: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
 
   // Data State
   const [ppoResult, setPpoResult] = useState<SimulationResponse | null>(null);
   const [heuristicResult, setHeuristicResult] = useState<SimulationResponse | null>(null);
+  const [scenarioConfig, setScenarioConfig] = useState<SimulationRequest | null>(null);
 
   // Interaction State
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [stage, setStage] = useState<'substrate' | 'relics' | 'statement' | 'cta'>('substrate');
-  const [breathPhase, setBreathPhase] = useState(0);
 
   // Fetch comparison data
   useEffect(() => {
     const fetch = async () => {
       let baseRequest = state?.request || { scenario: { max_timesteps: 50 }, policy_type: 'ppo', seed: 42 };
+      setScenarioConfig(baseRequest);
 
       if (state?.simulationData) {
         if (state.simulationData.metrics.policy_type === 'ppo') setPpoResult(state.simulationData);
@@ -65,331 +68,251 @@ const Results: React.FC = () => {
   useEffect(() => {
     if (!ppoResult || !heuristicResult) return;
 
-    setTimeout(() => setStage('relics'), 2000);
-    setTimeout(() => setStage('statement'), 7000);
-    setTimeout(() => setStage('cta'), 11000);
+    // Timeline
+    setTimeout(() => setStage('relics'), 2000); // Reveal relics
+    setTimeout(() => setStage('statement'), 8000); // Reveal final truth
+    setTimeout(() => setStage('cta'), 12000); // Allow exit
   }, [ppoResult, heuristicResult]);
 
-  // Ambient Breathing
+  // Map Substrate
   useEffect(() => {
-    const breathInterval = setInterval(() => {
-      setBreathPhase(prev => (prev + 0.02) % (Math.PI * 2));
-    }, 100);
-    return () => clearInterval(breathInterval);
+    if (!mapContainer.current || map.current) return;
+
+    map.current = new maplibregl.Map({
+      container: mapContainer.current!,
+      style: {
+        version: 8,
+        name: 'OSM Raster',
+        sources: {
+          'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: ''
+          }
+        },
+        layers: [
+          {
+            id: 'osm-layer',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 22,
+            paint: {
+              'raster-saturation': -1,
+              'raster-contrast': 0.2,
+              'raster-brightness-min': 0.1,
+              'raster-opacity': 0.4
+            }
+          }
+        ]
+      },
+      center: [77.2090, 28.6139],
+      zoom: 12,
+      pitch: 60, // Severe tilt for "Substrate" feel
+      bearing: -15,
+      interactive: false
+    });
+
+    // "Ghost Traces" - Static lines representing healed routes
+    map.current.on('load', () => {
+      // We pretend we have routes. In a real app we'd use the trajectory.
+      // Here we add a faint network layer.
+      map.current!.addSource('traces', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      // ... (Empty for now to strictly follow "no live movement" rule, relying on the 'Substrate' aesthetic)
+    });
+
   }, []);
 
   // Micro-Parallax
   const handleMouseMove = (e: React.MouseEvent) => {
-    const x = (e.clientX / window.innerWidth - 0.5) * 15;
-    const y = (e.clientY / window.innerHeight - 0.5) * 15;
+    const x = (e.clientX / window.innerWidth - 0.5) * 20; // -10 to 10 deg
+    const y = (e.clientY / window.innerHeight - 0.5) * 20;
     setMousePos({ x, y });
   };
 
-  if (!ppoResult || !heuristicResult) {
-    return (
-      <div style={{
-        background: '#050505', height: '100vh',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#3f3f46', letterSpacing: '4px', fontSize: '0.75rem'
-      }}>
-        INITIALIZING SYSTEM CONSCIOUSNESS...
-      </div>
-    );
-  }
+  if (!ppoResult || !heuristicResult) return <div style={{ background: '#09090b', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', letterSpacing: '4px' }}>INITIALIZING SYSTEM CONSCIOUSNESS...</div>;
 
   const ppo = ppoResult.metrics;
   const base = heuristicResult.metrics;
-
-  // Relics Data (Six Spatial Anchors)
-  const relics = [
-    {
-      title: 'FORESIGHT',
-      value: `${Math.round((1 - ppo.avg_casualties / base.avg_casualties) * 100)}%`,
-      desc: 'Lives preserved through predictive allocation',
-      depth: 0,
-      glow: 0.3
-    },
-    {
-      title: 'STABILIZATION',
-      value: `${ppo.total_timesteps}`,
-      desc: 'Cycles to achieve system equilibrium',
-      depth: 20,
-      glow: 0.25
-    },
-    {
-      title: 'RESILIENCE',
-      value: `${Math.round((1 - ppo.avg_hazard / base.avg_hazard) * 100)}%`,
-      desc: 'Hazard mitigation efficiency',
-      depth: 40,
-      glow: 0.2
-    },
-    {
-      title: 'EFFICIENCY',
-      value: `${Math.round(ppo.avg_evacuation_progress * 100)}%`,
-      desc: 'Evacuation completion under constraint',
-      depth: 10,
-      glow: 0.35
-    },
-    {
-      title: 'AUTHORITY',
-      value: `${Math.round(ppo.total_reward)}`,
-      desc: 'Cumulative system confidence',
-      depth: 30,
-      glow: 0.28
-    },
-    {
-      title: 'CONTROL',
-      value: `${Math.round((base.avg_casualties - ppo.avg_casualties) * 1000)}`,
-      desc: 'Differential lives under AI coordination',
-      depth: 15,
-      glow: 0.4
-    }
-  ];
-
-  const breathIntensity = Math.sin(breathPhase) * 0.1 + 0.9;
 
   return (
     <div
       onMouseMove={handleMouseMove}
       style={{
         position: 'relative', width: '100vw', height: '100vh',
-        background: 'linear-gradient(180deg, #050505 0%, #0a0a0f 100%)',
-        overflow: 'hidden',
+        background: '#050505', overflow: 'hidden',
         color: '#e2e8f0', fontFamily: 'system-ui, -apple-system, sans-serif',
-        perspective: '1200px'
+        perspective: '1000px' // For 3D relics
       }}
     >
-      {/* City-as-Substrate (Faint Depth Field) */}
+
+      {/* 1. Substrate (The City) */}
+      <div
+        ref={mapContainer}
+        style={{
+          width: '100%', height: '100%', opacity: 0.6,
+          filter: 'grayscale(100%) invert(0%) sepia(20%) hue-rotate(180deg)', // Cold tech feel
+          transition: 'transform 0.2s ease-out',
+          // Micro-parallax on the map itself
+          transform: `scale(1.05) translate(${mousePos.x * -0.5}px, ${mousePos.y * -0.5}px)`
+        }}
+      />
+
+      {/* Ambient Noise / Grain */}
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.05, background: 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiMwMDAiLz4KPC9zdmc+")', pointerEvents: 'none' }} />
+
+      {/* 2. Relics Chamber */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: `
-          radial-gradient(circle at 30% 40%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
-          radial-gradient(circle at 70% 60%, rgba(239, 68, 68, 0.02) 0%, transparent 50%)
-        `,
-        transform: `translate(${mousePos.x * 0.5}px, ${mousePos.y * 0.5}px) scale(${breathIntensity})`,
-        transition: 'transform 0.8s ease-out',
-        opacity: 0.6,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: (stage === 'relics' || stage === 'statement' || stage === 'cta') ? 1 : 0,
+        transition: 'opacity 2s ease-in-out'
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '60px', width: '80%', maxWidth: '1200px' }}>
+
+          {/* Foresight */}
+          <Relic
+            label="FORESIGHT"
+            value={`${(ppo.success_rate * 100).toFixed(0)}%`}
+            desc="Prediction accuracy optimized."
+            mousePos={mousePos} delay={0}
+          />
+
+          {/* Stabilization */}
+          <Relic
+            label="STABILIZATION"
+            value={`${ppo.time_steps} CYCLES`}
+            desc="Critical zones contained."
+            mousePos={mousePos} delay={200}
+          />
+
+          {/* Resilience */}
+          <Relic
+            label="RESILIENCE"
+            value={`+${ppo.victims_rescued - base.victims_rescued}`}
+            desc="Lives preserved under load."
+            mousePos={mousePos} delay={400} highlight
+          />
+
+          {/* Efficiency */}
+          <Relic
+            label="EFFICIENCY"
+            value="OPTIMAL"
+            desc="Resource contention resolved."
+            mousePos={mousePos} delay={600}
+          />
+
+          {/* Authority */}
+          <Relic
+            label="AUTHORITY"
+            value="GLOBAL"
+            desc="Decisions were absolute."
+            mousePos={mousePos} delay={800}
+          />
+
+          {/* Control */}
+          <Relic
+            label="CONTROL"
+            value="COMPLETE"
+            desc="Systemic failure prevented."
+            mousePos={mousePos} delay={1000}
+          />
+
+        </div>
+      </div>
+
+      {/* 3. The Proclamation */}
+      <div style={{
+        position: 'absolute', bottom: '15%', left: 0, right: 0, textAlign: 'center',
+        opacity: (stage === 'statement' || stage === 'cta') ? 1 : 0, transition: 'all 2s ease',
+        transform: (stage === 'statement' || stage === 'cta') ? 'translateY(0)' : 'translateY(20px)',
         pointerEvents: 'none'
       }}>
-        {/* Abstract Heightfield Grid */}
-        <svg width="100%" height="100%" style={{ opacity: 0.08 }}>
-          <defs>
-            <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
-              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
+        <h2 style={{
+          fontSize: '1.8rem', fontWeight: 200, letterSpacing: '2px', color: '#f8fafc',
+          textShadow: '0 0 30px rgba(59, 130, 246, 0.3)'
+        }}>
+          Under identical conditions, <span style={{ fontWeight: 400, color: '#60a5fa' }}>AI coordination</span> prevented systemic failure.
+        </h2>
       </div>
 
-      {/* Ambient Light Sweep */}
+      {/* 4. Quiet CTA */}
       <div style={{
-        position: 'absolute',
-        top: '-50%',
-        left: '-50%',
-        width: '200%',
-        height: '200%',
-        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 40%)',
-        transform: `rotate(${breathPhase * 10}deg)`,
-        transition: 'transform 2s linear',
-        pointerEvents: 'none',
-        opacity: 0.3
-      }} />
-
-      {/* Six Relics as Spatial Anchors */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '48px',
-        padding: '80px',
-        opacity: stage === 'substrate' ? 0 : 1,
-        transition: 'opacity 2s ease-out'
+        position: 'absolute', bottom: '8%', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '32px',
+        opacity: stage === 'cta' ? 1 : 0, transition: 'opacity 1.5s ease',
+        pointerEvents: 'auto'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '64px',
-          maxWidth: '1000px'
-        }}>
-          {relics.map((relic, i) => (
-            <div
-              key={i}
-              style={{
-                transform: `
-                  translateZ(${relic.depth}px) 
-                  translate(${mousePos.x * (relic.depth / 100)}px, ${mousePos.y * (relic.depth / 100)}px)
-                `,
-                transition: 'transform 0.6s ease-out',
-                opacity: 0,
-                animation: `fadeInUp 1s ease-out ${i * 0.2}s forwards`
-              }}
-            >
-              <div
-                style={{
-                  position: 'relative',
-                  padding: '32px 0',
-                  borderTop: '1px solid rgba(255,255,255,0.08)',
-                  cursor: 'default'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderTopColor = 'rgba(59, 130, 246, 0.4)';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderTopColor = 'rgba(255,255,255,0.08)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {/* Radial Glow on Hover */}
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '200px',
-                  height: '200px',
-                  background: `radial-gradient(circle, rgba(59, 130, 246, ${relic.glow * breathIntensity}) 0%, transparent 70%)`,
-                  pointerEvents: 'none',
-                  opacity: 0,
-                  transition: 'opacity 0.6s ease-out'
-                }} className="relic-glow" />
-
-                <div style={{
-                  fontSize: '0.7rem',
-                  color: '#64748b',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  marginBottom: '12px',
-                  fontWeight: 600
-                }}>
-                  {relic.title}
-                </div>
-
-                {/* Data as Motion: Halo Thickness */}
-                <div style={{
-                  fontSize: '2rem',
-                  color: 'rgba(255,255,255,0.9)',
-                  marginBottom: '8px',
-                  fontWeight: 200,
-                  letterSpacing: '-1px',
-                  textShadow: `0 0 ${20 * relic.glow * breathIntensity}px rgba(59, 130, 246, 0.4)`
-                }}>
-                  {relic.value}
-                </div>
-
-                <div style={{
-                  fontSize: '0.85rem',
-                  color: '#94a3b8',
-                  lineHeight: 1.5,
-                  maxWidth: '300px'
-                }}>
-                  {relic.desc}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={() => navigate('/report', { state: { ppoResult, heuristicResult, scenarioConfig } })}
+          className="god-btn"
+          style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)', border: 'none', fontSize: '0.9rem', letterSpacing: '2px', cursor: 'pointer', textTransform: 'uppercase' }}
+        >
+          [ Generate Artifact ]
+        </button>
+        <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }} />
+        <button
+          onClick={() => navigate('/setup')}
+          className="god-btn"
+          style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)', border: 'none', fontSize: '0.9rem', letterSpacing: '2px', cursor: 'pointer', textTransform: 'uppercase' }}
+        >
+          [ Reset System ]
+        </button>
       </div>
-
-      {/* Final Statement as System Voice */}
-      {stage === 'statement' || stage === 'cta' ? (
-        <div style={{
-          position: 'absolute',
-          bottom: '120px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          maxWidth: '800px',
-          opacity: 0,
-          animation: 'stabilize 2s ease-out 0.5s forwards'
-        }}>
-          {/* Horizon Line */}
-          <div style={{
-            position: 'absolute',
-            top: '-40px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '400px',
-            height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent)'
-          }} />
-
-          <div style={{
-            fontSize: '1.1rem',
-            color: '#cbd5e1',
-            letterSpacing: '1px',
-            lineHeight: 1.8,
-            fontWeight: 300,
-            textShadow: '0 2px 20px rgba(0,0,0,0.5)'
-          }}>
-            Under identical conditions, AI coordination prevented systemic failure.
-          </div>
-        </div>
-      ) : null}
-
-      {/* Quiet CTA */}
-      {stage === 'cta' && (
-        <div style={{
-          position: 'absolute',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '24px',
-          opacity: 0,
-          animation: 'fadeIn 1.5s ease-out 1s forwards'
-        }}>
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.5)',
-              padding: '12px 24px',
-              fontSize: '0.75rem',
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-              transition: 'all 0.4s ease-out'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-              e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
-            }}
-          >
-            Reset System
-          </button>
-        </div>
-      )}
 
       <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes stabilize {
-          from { opacity: 0; transform: translate(-50%, 10px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .relic-glow {
-          opacity: 0;
-        }
-        div:hover > .relic-glow {
-          opacity: 1 !important;
-        }
-      `}</style>
+                .god-btn:hover { color: white !important; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+            `}</style>
+    </div>
+  );
+};
+
+const Relic = ({ label, value, desc, mousePos, delay, highlight }: any) => {
+  // 3D Parallax Calculation
+  // We invert mouse pos to make elements look like they are floating "inside"
+  const rotateX = mousePos.y * -1;
+  const rotateY = mousePos.x;
+
+  return (
+    <div
+      style={{
+        opacity: 0, animation: `fadeIn 1s ease forwards ${delay}ms`,
+        transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+        transition: 'transform 0.1s ease-out',
+        position: 'relative',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center'
+      }}
+    >
+      {/* Halo / Energy */}
+      <div style={{
+        width: '120px', height: '120px', borderRadius: '50%',
+        border: highlight ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+        boxShadow: highlight ? '0 0 40px rgba(59, 130, 246, 0.1)' : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: '24px', position: 'relative'
+      }}>
+        {/* Inner Pulse */}
+        <div style={{
+          position: 'absolute', inset: '4px', borderRadius: '50%',
+          border: '1px dashed rgba(255,255,255,0.1)',
+          animation: 'spin 20s linear infinite'
+        }} />
+
+        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: highlight ? '#60a5fa' : '#e2e8f0', letterSpacing: '1px' }}>
+          {value}
+        </div>
+      </div>
+
+      <div style={{ fontSize: '0.8rem', letterSpacing: '3px', color: '#64748b', marginBottom: '8px' }}>{label}</div>
+      <div style={{ fontSize: '0.8rem', color: '#94a3b8', maxWidth: '200px', lineHeight: '1.5' }}>{desc}</div>
+
+      <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            `}</style>
     </div>
   );
 };
