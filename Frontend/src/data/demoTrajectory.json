@@ -1,0 +1,61 @@
+{
+  "metrics": {
+    "total_reward": -245.7,
+    "final_deaths": 12,
+    "avg_unsheltered": 67.4,
+    "total_evacuations": 1543,
+    "resource_utilization": 0.82
+  },
+  "trajectory": [
+    {
+      "t": 0,
+      "zone_stats": [
+        {
+          "zoneId": "zone_1",
+          "population": 1200,
+          "sheltered": 150,
+          "unsheltered": 1050,
+          "hazard_level": 0.92,
+          "casualties": 0
+        },
+        {
+          "zoneId": "zone_2",
+          "population": 980,
+          "sheltered": 100,
+          "unsheltered": 880,
+          "hazard_level": 0.85,
+          "casualties": 0
+        }
+      ],
+      "resources": [
+        {
+          "id": "ambulance_1",
+          "type": "ambulance",
+          "zoneId": "zone_1",
+          "lat": 28.6200,
+          "lon": 77.2100,
+          "load": 0,
+          "capacity": 6,
+          "status": "idle"
+        },
+        {
+          "id": "rescue_team_1",
+          "type": "rescue_team",
+          "zoneId": "zone_2",
+          "lat": 28.6100,
+          "lon": 77.2050,
+          "load": 0,
+          "capacity": 10,
+          "status": "idle"
+        }
+      ],
+      "action": {
+        "action_index": 0,
+        "description": "Initial state - no action",
+        "agent": "AI"
+      },
+      "reward": 0,
+      "cumulative_reward": 0
+    }
+  ]
+}

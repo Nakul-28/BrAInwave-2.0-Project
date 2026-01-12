@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ambulance_1",
+    "type": "ambulance",
+    "name": "AIIMS Hospital",
+    "coordinates": [77.2090, 28.5672]
+  },
+  {
+    "id": "ambulance_2",
+    "type": "ambulance",
+    "name": "Safdarjung Hospital",
+    "coordinates": [77.2069, 28.5672]
+  },
+  {
+    "id": "ambulance_3",
+    "type": "ambulance",
+    "name": "GTB Hospital",
+    "coordinates": [77.3090, 28.6762]
+  },
+  {
+    "id": "rescue_1",
+    "type": "rescue_team",
+    "name": "Civil Defense Rohini",
+    "coordinates": [77.0850, 28.7300]
+  },
+  {
+    "id": "rescue_2",
+    "type": "rescue_team",
+    "name": "Civil Defense CP",
+    "coordinates": [77.2150, 28.6289]
+  },
+  {
+    "id": "rescue_3",
+    "type": "rescue_team",
+    "name": "Civil Defense Dwarka",
+    "coordinates": [77.0450, 28.5800]
+  }
+]

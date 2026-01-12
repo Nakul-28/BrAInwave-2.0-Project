@@ -1,0 +1,27 @@
+{
+  "scenario": {
+    "disaster_type": "earthquake",
+    "magnitude": 7.0,
+    "epicenter": {
+      "lat": 28.6139,
+      "lon": 77.2090
+    },
+    "city": "Delhi",
+    "start_time": "2026-01-09T06:30:00Z"
+  },
+  "resources": {
+    "ambulances": 25,
+    "rescue_teams": 15,
+    "shelters": 10
+  },
+  "strategies": [
+    "AI",
+    "HUMAN",
+    "GREEDY",
+    "NEAREST_SHELTER"
+  ],
+  "simulation_config": {
+    "max_timesteps": 100,
+    "timestep_duration_seconds": 300
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "zone_1",
+      "properties": {
+        "name": "Rohini",
+        "hazardLevel": 0.95
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.06, 28.75],
+          [77.11, 28.75],
+          [77.11, 28.71],
+          [77.06, 28.71],
+          [77.06, 28.75]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_2",
+      "properties": {
+        "name": "Pitampura",
+        "hazardLevel": 0.85
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.11, 28.72],
+          [77.16, 28.72],
+          [77.16, 28.68],
+          [77.11, 28.68],
+          [77.11, 28.72]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_3",
+      "properties": {
+        "name": "Connaught Place",
+        "hazardLevel": 0.75
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.20, 28.64],
+          [77.23, 28.64],
+          [77.23, 28.61],
+          [77.20, 28.61],
+          [77.20, 28.64]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_4",
+      "properties": {
+        "name": "Dwarka",
+        "hazardLevel": 0.65
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.02, 28.60],
+          [77.07, 28.60],
+          [77.07, 28.56],
+          [77.02, 28.56],
+          [77.02, 28.60]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_5",
+      "properties": {
+        "name": "Saket",
+        "hazardLevel": 0.70
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.20, 28.53],
+          [77.24, 28.53],
+          [77.24, 28.50],
+          [77.20, 28.50],
+          [77.20, 28.53]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_6",
+      "properties": {
+        "name": "Noida Border",
+        "hazardLevel": 0.60
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.30, 28.60],
+          [77.35, 28.60],
+          [77.35, 28.56],
+          [77.30, 28.56],
+          [77.30, 28.60]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_7",
+      "properties": {
+        "name": "Karol Bagh",
+        "hazardLevel": 0.80
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.18, 28.66],
+          [77.21, 28.66],
+          [77.21, 28.64],
+          [77.18, 28.64],
+          [77.18, 28.66]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_8",
+      "properties": {
+        "name": "Vasant Vihar",
+        "hazardLevel": 0.55
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [77.14, 28.56],
+          [77.17, 28.56],
+          [77.17, 28.54],
+          [77.14, 28.54],
+          [77.14, 28.56]
+        ]]
+      }
+    }
+  ]
+}
