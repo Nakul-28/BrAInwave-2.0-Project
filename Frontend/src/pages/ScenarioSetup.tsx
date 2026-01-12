@@ -3,18 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { simulateDisaster } from '../services/api';
-import type { SimulationRequest, SimulationResponse } from '../types/simulation';
+import type { SimulationRequest } from '../types/simulation';
 
-/**
- * Scenario Setup — "God-Mode Briefing Chamber"
- * 
- * "The system already understands the city. You are granting permission."
- * 
- * Design Pillars:
- * 1. Monolith: Solid, surgical left panel.
- * 2. Substrate: Living, breathing map on the right.
- * 3. Authority: Inputs framed as permissions, not settings.
- */
 const ScenarioSetup: React.FC = () => {
   const navigate = useNavigate();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -24,17 +14,15 @@ const ScenarioSetup: React.FC = () => {
   const [maxTimesteps, setMaxTimesteps] = useState<number>(50);
   const [policyType, setPolicyType] = useState<"ppo" | "heuristic">("ppo");
   const [seed, setSeed] = useState<string>("");
-
-  // UI state
   const [isLoading, setIsLoading] = useState(false);
-  const [isHoveringCTA, setIsHoveringCTA] = useState(false);
+  const [error, setError] = useState<string>("");
 
-  // Map Setup (Living Substrate)
+  // Initialize Map Background
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
     map.current = new maplibregl.Map({
-      container: mapContainer.current!,
+      container: mapContainer.current,
       style: {
         version: 8,
         name: 'OSM Raster',
@@ -54,39 +42,30 @@ const ScenarioSetup: React.FC = () => {
             minzoom: 0,
             maxzoom: 22,
             paint: {
-              'raster-saturation': -1,
-              'raster-brightness-min': 0.15,
-              'raster-contrast': 0.2 // Flat, substrate look
+              'raster-saturation': -0.5,
+              'raster-brightness-min': 0.4,
+              'raster-opacity': 0.6
             }
           }
         ]
       },
       center: [77.2090, 28.6139],
-      zoom: 11.5,
+      zoom: 11,
       pitch: 0,
-      interactive: false
+      interactive: false,
+      attributionControl: false
     });
 
-    // Slow Ambient Drift
-    let frameId: number;
-    const drift = () => {
-      if (!map.current) return;
-      const center = map.current.getCenter();
-      // Sub-pixel drift
-      map.current.easeTo({
-        center: [center.lng + 0.00001, center.lat],
-        duration: 1000,
-        easing: t => t
-      });
-      // frameId = requestAnimationFrame(drift); // Too jerky for MapLibre, rely on CSS transform for smoothness if possible
+    return () => {
+      if (map.current) map.current.remove();
+      map.current = null;
     };
-    // Actually, CSS transform on container is smoother for subtle drift
   }, []);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
       const request: SimulationRequest = {
@@ -98,158 +77,241 @@ const ScenarioSetup: React.FC = () => {
       navigate('/simulate', { state: { simulationData: response, request } });
     } catch (err) {
       console.error(err);
+      setError("Failed to start simulation. Please check your backend connection.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#020617', overflow: 'hidden', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Map Background */}
+      <div ref={mapContainer} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* 1. Briefing Monolith (Left) */}
+      {/* Gradient Overlay for Aura Effect */}
       <div style={{
-        position: 'relative', zIndex: 10,
-        width: '500px', flexShrink: 0,
-        background: '#0f172a',
-        borderRight: '1px solid #1e293b',
-        display: 'flex', flexDirection: 'column',
-        boxShadow: '20px 0 50px rgba(0,0,0,0.5)'
+        position: 'absolute',
+        inset: 0,
+        background: 'radial-gradient(circle at 30% 50%, rgba(102, 126, 234, 0.4) 0%, rgba(118, 75, 162, 0.3) 50%, transparent 100%)',
+        pointerEvents: 'none'
+      }} />
+
+      {/* Centered Glassmorphic Card */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
       }}>
-        <div style={{ padding: '60px 40px', flex: 1 }}>
-          {/* Header */}
-          <div style={{ marginBottom: '60px' }}>
-            <div style={{ color: '#475569', fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 600 }}>
-              Restricted Access // Level 5
-            </div>
-            <h1 style={{ color: '#f8fafc', fontSize: '2rem', fontWeight: 300, margin: 0, letterSpacing: '-0.5px' }}>
-              Awaiting Authorization
-            </h1>
-            <div style={{ width: '40px', height: '2px', background: '#3b82f6', marginTop: '24px' }} />
-          </div>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 0 80px rgba(102, 126, 234, 0.3)',
+          padding: '40px',
+          maxWidth: '420px',
+          width: '100%'
+        }}>
+          <h1 style={{
+            fontSize: '1.75rem',
+            fontWeight: 'bold',
+            marginBottom: '8px',
+            color: 'white',
+            textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+          }}>
+            Scenario Setup
+          </h1>
+          <p style={{
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: '30px',
+            fontSize: '0.9rem'
+          }}>
+            Configure your disaster simulation parameters
+          </p>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
-
-            {/* Auth 1: Duration */}
-            <div>
-              <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '12px' }}>
-                Operational Authority Duration
+          <form onSubmit={handleSubmit}>
+            {/* Max Timesteps */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '8px'
+              }}>
+                Simulation Duration (Timesteps)
               </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <input
-                  type="range" min="10" max="100" step="5"
-                  value={maxTimesteps} onChange={e => setMaxTimesteps(parseInt(e.target.value))}
-                  className="monolith-range"
-                  style={{ flex: 1, cursor: 'pointer' }}
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="5"
+                  value={maxTimesteps}
+                  onChange={(e) => setMaxTimesteps(parseInt(e.target.value))}
+                  style={{
+                    flex: 1,
+                    accentColor: '#667eea'
+                  }}
                 />
-                <div style={{ color: '#f1f5f9', fontFamily: 'monospace', fontSize: '1.2rem', minWidth: '60px', textAlign: 'right' }}>
-                  {maxTimesteps}m
-                </div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '8px' }}>
-                Beyond this window, autonomous escalation may be required.
+                <span style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#667eea',
+                  minWidth: '50px',
+                  textAlign: 'right',
+                  textShadow: '0 0 10px rgba(102, 126, 234, 0.5)'
+                }}>
+                  {maxTimesteps}
+                </span>
               </div>
             </div>
 
-            {/* Auth 2: Strategy */}
-            <div>
-              <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '16px' }}>
-                Delegation of Cognition
+            {/* Policy Type */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '8px'
+              }}>
+                Policy Type
               </label>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* PPO */}
-                <div
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
                   onClick={() => setPolicyType('ppo')}
                   style={{
-                    padding: '20px',
-                    background: policyType === 'ppo' ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
-                    border: policyType === 'ppo' ? '1px solid #3b82f6' : '1px solid #334155',
-                    cursor: 'pointer', transition: 'all 0.2s'
+                    flex: 1,
+                    padding: '12px',
+                    border: policyType === 'ppo' ? '2px solid rgba(102, 126, 234, 0.8)' : '2px solid rgba(255, 255, 255, 0.2)',
+                    background: policyType === 'ppo' ? 'rgba(102, 126, 234, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    color: 'white',
+                    transition: 'all 0.3s',
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: policyType === 'ppo' ? '0 0 20px rgba(102, 126, 234, 0.4)' : 'none'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ color: policyType === 'ppo' ? '#60a5fa' : '#cbd5e1', fontWeight: 600 }}>AI AGENT (PPO)</span>
-                    {policyType === 'ppo' && <span style={{ fontSize: '0.7rem', color: '#60a5fa', border: '1px solid #60a5fa', padding: '2px 6px' }}>PRIMARY</span>}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Adaptive coordination across total city state.</div>
-                </div>
-
-                {/* Heuristic */}
-                <div
+                  AI (PPO)
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPolicyType('heuristic')}
                   style={{
-                    padding: '20px',
-                    border: policyType === 'heuristic' ? '1px solid #94a3b8' : '1px solid #1e293b',
-                    cursor: 'pointer', transition: 'all 0.2s', opacity: 0.6
+                    flex: 1,
+                    padding: '12px',
+                    border: policyType === 'heuristic' ? '2px solid rgba(102, 126, 234, 0.8)' : '2px solid rgba(255, 255, 255, 0.2)',
+                    background: policyType === 'heuristic' ? 'rgba(102, 126, 234, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    color: 'white',
+                    transition: 'all 0.3s',
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: policyType === 'heuristic' ? '0 0 20px rgba(102, 126, 234, 0.4)' : 'none'
                   }}
                 >
-                  <div style={{ color: '#cbd5e1', fontWeight: 600, marginBottom: '4px' }}>BASELINE HEURISTIC</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Rule-based protocol for reference.</div>
-                </div>
+                  Heuristic
+                </button>
               </div>
             </div>
 
-            {/* Auth 3: Seed */}
-            <div>
-              <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '12px' }}>
-                Reproducibility Lock
+            {/* Seed */}
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '8px'
+              }}>
+                Random Seed (Optional)
               </label>
               <input
-                type="text" placeholder="NO LOCK ENGAGED"
-                value={seed} onChange={e => setSeed(e.target.value)}
+                type="text"
+                placeholder="Leave empty for random"
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
                 style={{
-                  width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid #334155',
-                  color: '#f1f5f9', padding: '8px 0', outline: 'none', fontFamily: 'monospace'
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid rgba(255, 255, 255, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '10px',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  color: 'white',
+                  transition: 'all 0.3s'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'rgba(102, 126, 234, 0.8)';
+                  e.target.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.3)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  e.target.style.boxShadow = 'none';
                 }}
               />
-              <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '8px' }}>
-                Enforces identical conditions for accountability.
-              </div>
             </div>
 
-            {/* CTA Seal */}
+            {/* Error Message */}
+            {error && (
+              <div style={{
+                padding: '12px',
+                background: 'rgba(239, 68, 68, 0.2)',
+                backdropFilter: 'blur(10px)',
+                color: 'white',
+                borderRadius: '10px',
+                marginBottom: '16px',
+                fontSize: '0.875rem',
+                border: '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                {error}
+              </div>
+            )}
+
+            {/* Submit Button */}
             <button
               type="submit"
-              onMouseEnter={() => setIsHoveringCTA(true)}
-              onMouseLeave={() => setIsHoveringCTA(false)}
               disabled={isLoading}
               style={{
-                marginTop: '20px', padding: '24px', background: '#0f172a',
-                border: '1px solid #334155', color: isHoveringCTA ? '#f1f5f9' : '#94a3b8',
-                letterSpacing: '2px', textTransform: 'uppercase', fontSize: '0.9rem',
-                cursor: isLoading ? 'wait' : 'pointer', transition: 'all 0.3s',
-                position: 'relative', overflow: 'hidden'
+                width: '100%',
+                padding: '14px',
+                background: isLoading ? 'rgba(160, 174, 192, 0.3)' : 'linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
+                color: 'white',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 30px rgba(102, 126, 234, 0.6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
               }}
             >
-              {isLoading ? 'ESTABLISHING CONNECTION...' : 'INITIATE RESPONSE SIMULATION'}
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, height: '2px', background: '#3b82f6',
-                width: isHoveringCTA ? '100%' : '0%', transition: 'width 0.3s ease-out'
-              }} />
+              {isLoading ? 'Starting Simulation...' : 'Start Simulation'}
             </button>
-
           </form>
         </div>
       </div>
-
-      {/* 2. Living Substrate (Right) */}
-      <div style={{ flex: 1, position: 'relative', background: '#000' }}>
-        <div ref={mapContainer} style={{ width: '100%', height: '100%', opacity: isHoveringCTA ? 0.4 : 0.6, transition: 'opacity 0.5s', filter: 'grayscale(1) invert(0.1)' }} />
-
-        {/* Vignette */}
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 70% 50%, transparent 20%, #020617 100%)', pointerEvents: 'none' }} />
-
-        {/* Status Indicator */}
-        <div style={{ position: 'absolute', top: 40, right: 40, display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '8px', height: '8px', background: '#10b981', borderRadius: '50%', boxShadow: '0 0 10px #10b981' }} />
-          <div style={{ color: '#10b981', fontSize: '0.75rem', letterSpacing: '2px', fontFamily: 'monospace' }}>SYSTEM ONLINE</div>
-        </div>
-      </div>
-
-      <style>{`
-                .monolith-range { -webkit-appearance: none; height: 2px; background: #334155; }
-                .monolith-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #0f172a; border: 2px solid #94a3b8; border-radius: 50%; cursor: pointer; }
-                .monolith-range::-webkit-slider-thumb:hover { border-color: #f1f5f9; background: #334155; }
-            `}</style>
     </div>
   );
 };
