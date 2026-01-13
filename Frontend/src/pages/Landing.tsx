@@ -159,8 +159,6 @@ const Landing: React.FC = () => {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    console.log('Initializing MapLibre map with radial impact circles...');
-
     const initTimeout = setTimeout(() => {
       try {
         map.current = new maplibregl.Map({
@@ -193,10 +191,8 @@ const Landing: React.FC = () => {
           attributionControl: false,
         });
 
-        console.log('Map instance created');
 
         map.current.on('load', () => {
-          console.log('Map loaded successfully');
 
           // Create GeoJSON source for impact circles
           const circleFeatures = DEMO_CIRCLES.map(circle => ({
@@ -251,7 +247,6 @@ const Landing: React.FC = () => {
             },
           });
 
-          console.log('Impact circle layer added');
         });
 
         map.current.on('error', (e) => {
@@ -277,7 +272,6 @@ const Landing: React.FC = () => {
 
     const mapInstance = map.current;
 
-    console.log('Updating visual state:', currentState);
 
     switch (currentState) {
       case VisualState.CALM:

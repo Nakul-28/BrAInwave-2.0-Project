@@ -3,7 +3,6 @@ import type { SimulationResponse, SimulationRequest } from '../types/simulation'
 import { SimulationPlayer } from '../components/SimulationPlayer';
 import { StateVisualization } from '../components/StateVisualization';
 import { ActionLog } from '../components/ActionLog';
-import { RewardChart } from '../components/RewardChart';
 
 interface LocationState {
   simulationData: SimulationResponse;
@@ -256,12 +255,6 @@ const Simulation: React.FC = () => {
                 timestep={stepIndex}
               />
             </div>
-
-            {/* Reward Chart - Full Width */}
-            <RewardChart
-              trajectory={trajectory}
-              currentStepIndex={stepIndex}
-            />
 
             {/* Navigation Helper */}
             <div style={{

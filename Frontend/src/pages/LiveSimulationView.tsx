@@ -2,24 +2,28 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { SimulationResponse, SimulationRequest, SimulationStep } from '../types/simulation';
+import type { SimulationResponse, SimulationRequest } from '../types/simulation';
 
 interface LocationState {
     simulationData: SimulationResponse;
     request: SimulationRequest;
 }
 
-// Reuse Landing Page Zone Definitions for Visual Continuity
-const IMPACT_ZONES = [
-    { id: 'zone_1', name: 'Rohini', coords: [77.085, 28.73], baseRadius: 3500 },
-    { id: 'zone_2', name: 'Pitampura', coords: [77.14, 28.70], baseRadius: 2500 },
-    { id: 'zone_3', name: 'Connaught Place', coords: [77.215, 28.625], baseRadius: 2000 },
-    { id: 'zone_4', name: 'Dwarka', coords: [77.045, 28.58], baseRadius: 2200 },
-    { id: 'zone_5', name: 'Saket', coords: [77.22, 28.515], baseRadius: 1800 },
-    { id: 'zone_6', name: 'Karol Bagh', coords: [77.195, 28.65], baseRadius: 2200 },
-    { id: 'zone_7', name: 'Vasant Vihar', coords: [77.155, 28.55], baseRadius: 1600 },
-    { id: 'zone_8', name: 'Noida Border', coords: [77.325, 28.58], baseRadius: 1900 },
-];
+/**
+ * Live City Simulation View — System-Driven Observation
+ * 
+ * RESPONSIBILITY:
+ * - Consume backend simulation output verbatim
+ * - Render cinematic visualization
+ * - Control playback pacing (frontend-only)
+ * - Control camera movement (reactive to backend state)
+ * 
+ * PROHIBITED:
+ * - Computing risk values
+ * - Computing metrics
+ * - Interpreting meaning
+ * - Modifying backend data
+ */
 
 /**
  * Live City Simulation View — Cinematic, System-Directed
@@ -46,15 +50,24 @@ const LiveSimulationView: React.FC = () => {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [simulationComplete, setSimulationComplete] = useState(false);
-    const [cameraState, setCameraState] = useState<'overview' | 'focus' | 'stabilize'>('overview');
 
-    // Handle Missing Data
-    if (!state || !state.simulationData || !state.request) {
-        return <div style={{ height: '100vh', background: '#000' }} />;
+    // Fail fast on missing data (enforce backend contract)
+    if (!state || !state.simulationData) {
+        throw new Error("LiveSimulationView: Missing simulation data");
     }
 
     const { simulationData } = state;
-    const { trajectory, metrics } = simulationData;
+    const { trajectory, zones, meta } = simulationData;
+
+    // Validate required backend data
+    if (!trajectory || trajectory.length === 0) {
+        throw new Error("LiveSimulationView: Empty trajectory");
+    }
+
+    if (!zones || zones.length === 0) {
+        throw new Error("LiveSimulationView: Missing zones");
+    }
+
     const currentStep = trajectory[currentStepIndex];
     const totalSteps = trajectory.length;
 
@@ -183,68 +196,50 @@ const LiveSimulationView: React.FC = () => {
         return () => clearTimeout(timer);
     }, [isPlaying, currentStepIndex, totalSteps]);
 
-    // 3. Visual State Update & Camera Director
+    // 3. Visual State Update & Camera Director (BACKEND-DRIVEN)
     useEffect(() => {
         if (!map.current || !map.current.getSource('zones')) return;
 
         const source = map.current.getSource('zones') as maplibregl.GeoJSONSource;
-        const { hazard, casualties, evacuation_progress } = currentStep.state;
 
-        // Cinematic State Calculation
-        const globalRisk = (hazard + casualties + (1 - evacuation_progress)) / 3;
-
-        // Prodedural Zone Updates
-        const features = IMPACT_ZONES.map((zone, i) => {
-            // Add subtle variance so zones don't flash in unison
-            const zoneMod = (i * 0.15);
-            const zoneRisk = Math.min(1, Math.max(0, globalRisk + (Math.sin(currentStepIndex + i) * 0.1)));
-
+        // Use backend zones[] directly - NO FRONTEND COMPUTATION
+        const features = zones.map(zone => {
+            // Map backend risk to visual color status
             let status = 'safe';
-            if (zoneRisk > 0.6) status = 'critical';
-            else if (zoneRisk > 0.3) status = 'risk';
+            if (zone.risk > 0.6) status = 'critical';
+            else if (zone.risk > 0.3) status = 'risk';
 
             return {
                 type: 'Feature' as const,
                 id: zone.id,
                 properties: {
-                    radius: zone.baseRadius,
+                    radius: 2000, // Fixed visual radius
                     status: status
                 },
-                geometry: { type: 'Point' as const, coordinates: zone.coords as [number, number] }
+                geometry: {
+                    type: 'Point' as const,
+                    coordinates: [zone.lng, zone.lat] as [number, number]
+                }
             };
         });
 
         source.setData({ type: 'FeatureCollection', features: features });
 
-        // 🎥 Advanced Camera Director (Continuous Flow)
-        // Moves the camera slowly and continuously based on tension.
-
+        // Simple camera movement (original logic)
         const mapInstance = map.current;
         if (!simulationComplete && mapInstance) {
-            const currentZoom = mapInstance.getZoom();
-            const currentPitch = mapInstance.getPitch();
             const currentBearing = mapInstance.getBearing();
 
-            let targetZoom = 10.8;
-            let targetPitch = 10;
-
-            // High Tension = Zoom In, High Pitch (Drama)
-            if (globalRisk > 0.6) {
-                targetZoom = 12.5;
-                targetPitch = 50;
-            }
-
-            // Calculate a subtle drift
-            // We use easeTo with long duration to make it continuous
+            // Smooth camera movement
             mapInstance.easeTo({
-                zoom: targetZoom,
-                pitch: targetPitch,
-                bearing: currentBearing + 2, // Constant slow rotation
+                zoom: 10.8,
+                pitch: 10,
+                bearing: currentBearing + 2,
                 duration: 4000,
-                easing: t => t * (2 - t) // Smooth ease-out
+                easing: t => t * (2 - t)
             });
         }
-    }, [currentStepIndex, currentStep, simulationComplete]);
+    }, [currentStepIndex, zones, simulationComplete, currentStep, trajectory]);
 
     // 🚑 Ambulance Animation Removed
     // System no longer visualizes individual units, focusing on 'God View' zones.
@@ -297,7 +292,7 @@ const LiveSimulationView: React.FC = () => {
             }}>
                 <div style={{ fontSize: '0.8rem', letterSpacing: '2px', opacity: 0.7 }}>T + {currentStepIndex * 5} MIN</div>
                 <div style={{ fontSize: '1rem', fontWeight: 'bold', marginTop: '4px' }}>
-                    STRATEGY: <span style={{ color: '#3b82f6' }}>{metrics.policy_type.toUpperCase()}</span>
+                    STRATEGY: <span style={{ color: '#3b82f6' }}>{meta.policy.toUpperCase()}</span>
                 </div>
             </div>
 

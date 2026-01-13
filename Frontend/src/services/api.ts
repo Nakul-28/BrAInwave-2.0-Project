@@ -1,8 +1,23 @@
 /**
- * Brainwave API Service
+ * DisasterSim API Transport Layer
  * 
- * Type-safe API client for communicating with the backend.
- * Uses environment variables for API URL configuration.
+ * HARD BOUNDARY: This is the ONLY file that communicates with the backend.
+ * 
+ * RESPONSIBILITY:
+ * - Fetch simulation data from backend
+ * - Expose typed interfaces
+ * - Return backend JSON untouched
+ * 
+ * PROHIBITED:
+ * - Interpretation of data
+ * - Transformation of values
+ * - Fallback logic
+ * - UI decisions
+ * - Computed fields
+ * - Retries
+ * - Silent failures
+ * 
+ * If backend changes, this file changes. NOT the pages.
  */
 
 import type {
@@ -10,6 +25,9 @@ import type {
     SimulationResponse,
 } from "../types/simulation";
 
+/**
+ * Backend API base URL from environment
+ */
 const API_URL = import.meta.env.VITE_API_URL;
 
 if (!API_URL) {
@@ -17,11 +35,19 @@ if (!API_URL) {
 }
 
 /**
- * Run disaster response simulation
+ * Execute disaster simulation via backend API.
+ * 
+ * PURE TRANSPORT FUNCTION:
+ * - Accepts request parameters
+ * - Returns backend JSON untouched
+ * - Throws on any error (no silent failures)
+ * - No retries
+ * - No fallbacks
+ * - No transformations
  * 
  * @param request - Simulation request parameters
- * @returns Complete simulation response with trajectory and metrics
- * @throws Error if request fails
+ * @returns Backend response exactly as received
+ * @throws Error if network fails or backend returns non-200
  */
 export async function simulateDisaster(
     request: SimulationRequest
@@ -39,5 +65,6 @@ export async function simulateDisaster(
         throw new Error(`Simulation failed: ${text}`);
     }
 
+    // Return backend JSON untouched - no transformation
     return response.json();
 }

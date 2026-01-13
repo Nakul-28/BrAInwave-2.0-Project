@@ -2,24 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { simulateDisaster } from '../services/api';
-import type { SimulationResponse, SimulationRequest } from '../types/simulation';
+import type { SimulationResponse } from '../types/simulation';
+import { deriveRelics, type Relic } from '../utils/relicDerivations';
 
 interface LocationState {
   simulationData?: SimulationResponse;
-  request?: SimulationRequest;
 }
 
 /**
- * Results Page — "God-Mode Control Room"
+ * Results Page — Post-Incident Authority Chamber
  * 
- * "A system awareness. A decision already made."
+ * RESPONSIBILITY:
+ * - Consume backend metrics blindly (final_metrics, baseline_metrics)
+ * - Derive symbolic relics deterministically
+ * - Present outcomes without explanation
  * 
- * Design Elements:
- * - Substrate: Tilted, ghostly city map.
- * - Relics: Floating spatial anchors representing mastery.
- * - Energy: Pulse/Glow indicating metric success.
- * - Silence: Minimal text, no charts.
+ * PROHIBITED:
+ * - Displaying raw JSON
+ * - Tables or charts
+ * - Side-by-side comparisons
+ * - Explaining formulas
+ * - Mentioning PPO/RL/heuristics
+ * 
+ * Backend = Truth. Frontend = Expression.
  */
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -28,51 +33,29 @@ const Results: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
 
-  // Data State
-  const [ppoResult, setPpoResult] = useState<SimulationResponse | null>(null);
-  const [heuristicResult, setHeuristicResult] = useState<SimulationResponse | null>(null);
-  const [scenarioConfig, setScenarioConfig] = useState<SimulationRequest | null>(null);
+  // Data State - Now we only need one response since backend provides both
+  const [simulationData, setSimulationData] = useState<SimulationResponse | null>(null);
 
   // Interaction State
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [stage, setStage] = useState<'substrate' | 'relics' | 'statement' | 'cta'>('substrate');
 
-  // Fetch comparison data
+  // Load simulation data
   useEffect(() => {
-    const fetch = async () => {
-      let baseRequest = state?.request || { scenario: { max_timesteps: 50 }, policy_type: 'ppo', seed: 42 };
-      setScenarioConfig(baseRequest);
-
-      if (state?.simulationData) {
-        if (state.simulationData.metrics.policy_type === 'ppo') setPpoResult(state.simulationData);
-        else setHeuristicResult(state.simulationData);
-      }
-
-      try {
-        if (!ppoResult && state?.simulationData?.metrics.policy_type !== 'ppo') {
-          const res = await simulateDisaster({ ...baseRequest, policy_type: 'ppo' });
-          setPpoResult(res);
-        }
-        if (!heuristicResult && state?.simulationData?.metrics.policy_type !== 'heuristic') {
-          const res = await simulateDisaster({ ...baseRequest, policy_type: 'heuristic' });
-          setHeuristicResult(res);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetch();
+    if (state?.simulationData) {
+      setSimulationData(state.simulationData);
+    }
   }, []);
 
   // Sequencer
   useEffect(() => {
-    if (!ppoResult || !heuristicResult) return;
+    if (!simulationData) return;
 
     // Timeline
     setTimeout(() => setStage('relics'), 2000); // Reveal relics
     setTimeout(() => setStage('statement'), 8000); // Reveal final truth
     setTimeout(() => setStage('cta'), 12000); // Allow exit
-  }, [ppoResult, heuristicResult]);
+  }, [simulationData]);
 
   // Map Substrate
   useEffect(() => {
@@ -134,10 +117,13 @@ const Results: React.FC = () => {
     setMousePos({ x, y });
   };
 
-  if (!ppoResult || !heuristicResult) return <div style={{ background: '#09090b', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', letterSpacing: '4px' }}>INITIALIZING SYSTEM CONSCIOUSNESS...</div>;
+  if (!simulationData) return <div style={{ background: '#09090b', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', letterSpacing: '4px' }}>INITIALIZING SYSTEM CONSCIOUSNESS...</div>;
 
-  const ppo = ppoResult.metrics;
-  const base = heuristicResult.metrics;
+  // Derive relics from backend metrics (deterministic)
+  const relics = deriveRelics(
+    simulationData.final_metrics,
+    simulationData.baseline_metrics
+  );
 
   return (
     <div
@@ -174,53 +160,65 @@ const Results: React.FC = () => {
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '60px', width: '80%', maxWidth: '1200px' }}>
 
-          {/* Foresight */}
-          <Relic
-            label="FORESIGHT"
-            value={`${(ppo.success_rate * 100).toFixed(0)}%`}
-            desc="Prediction accuracy optimized."
-            mousePos={mousePos} delay={0}
-          />
+          {/* FORESIGHT */}
+          {relics.foresight.visible && (
+            <Relic
+              label={relics.foresight.label}
+              value={relics.foresight.value}
+              desc={relics.foresight.description}
+              mousePos={mousePos} delay={0}
+            />
+          )}
 
-          {/* Stabilization */}
-          <Relic
-            label="STABILIZATION"
-            value={`${ppo.time_steps} CYCLES`}
-            desc="Critical zones contained."
-            mousePos={mousePos} delay={200}
-          />
+          {/* STABILIZATION */}
+          {relics.stabilization.visible && (
+            <Relic
+              label={relics.stabilization.label}
+              value={relics.stabilization.value}
+              desc={relics.stabilization.description}
+              mousePos={mousePos} delay={200}
+            />
+          )}
 
-          {/* Resilience */}
-          <Relic
-            label="RESILIENCE"
-            value={`+${ppo.victims_rescued - base.victims_rescued}`}
-            desc="Lives preserved under load."
-            mousePos={mousePos} delay={400} highlight
-          />
+          {/* RESILIENCE */}
+          {relics.resilience.visible && (
+            <Relic
+              label={relics.resilience.label}
+              value={relics.resilience.value}
+              desc={relics.resilience.description}
+              mousePos={mousePos} delay={400} highlight
+            />
+          )}
 
-          {/* Efficiency */}
-          <Relic
-            label="EFFICIENCY"
-            value="OPTIMAL"
-            desc="Resource contention resolved."
-            mousePos={mousePos} delay={600}
-          />
+          {/* EFFICIENCY */}
+          {relics.efficiency.visible && (
+            <Relic
+              label={relics.efficiency.label}
+              value={relics.efficiency.value}
+              desc={relics.efficiency.description}
+              mousePos={mousePos} delay={600}
+            />
+          )}
 
-          {/* Authority */}
-          <Relic
-            label="AUTHORITY"
-            value="GLOBAL"
-            desc="Decisions were absolute."
-            mousePos={mousePos} delay={800}
-          />
+          {/* AUTHORITY */}
+          {relics.authority.visible && (
+            <Relic
+              label={relics.authority.label}
+              value={relics.authority.value}
+              desc={relics.authority.description}
+              mousePos={mousePos} delay={800}
+            />
+          )}
 
-          {/* Control */}
-          <Relic
-            label="CONTROL"
-            value="COMPLETE"
-            desc="Systemic failure prevented."
-            mousePos={mousePos} delay={1000}
-          />
+          {/* CONTROL */}
+          {relics.control.visible && (
+            <Relic
+              label={relics.control.label}
+              value={relics.control.value}
+              desc={relics.control.description}
+              mousePos={mousePos} delay={1000}
+            />
+          )}
 
         </div>
       </div>
@@ -247,7 +245,16 @@ const Results: React.FC = () => {
         pointerEvents: 'auto'
       }}>
         <button
-          onClick={() => navigate('/report', { state: { ppoResult, heuristicResult, scenarioConfig } })}
+          onClick={() => navigate('/report', {
+            state: {
+              ppoResult: simulationData,
+              heuristicResult: {
+                ...simulationData,
+                final_metrics: simulationData.baseline_metrics
+              },
+              scenarioConfig: state?.request || {}
+            }
+          })}
           className="god-btn"
           style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)', border: 'none', fontSize: '0.9rem', letterSpacing: '2px', cursor: 'pointer', textTransform: 'uppercase' }}
         >
@@ -288,11 +295,11 @@ const Relic = ({ label, value, desc, mousePos, delay, highlight }: any) => {
     >
       {/* Halo / Energy */}
       <div style={{
-        width: '120px', height: '120px', borderRadius: '50%',
+        width: '220px', height: '220px', borderRadius: '50%',
         border: highlight ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.1)',
         boxShadow: highlight ? '0 0 40px rgba(59, 130, 246, 0.1)' : 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: '24px', position: 'relative'
+        marginBottom: '40px', position: 'relative'
       }}>
         {/* Inner Pulse */}
         <div style={{
@@ -301,18 +308,33 @@ const Relic = ({ label, value, desc, mousePos, delay, highlight }: any) => {
           animation: 'spin 20s linear infinite'
         }} />
 
-        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: highlight ? '#60a5fa' : '#e2e8f0', letterSpacing: '1px' }}>
+        <div style={{
+          fontSize: '2rem',
+          fontWeight: 300,
+          color: highlight ? '#93c5fd' : 'rgba(255, 255, 255, 0.92)',
+          letterSpacing: '-0.015em',
+          textShadow: highlight
+            ? '0 0 8px rgba(96, 165, 250, 0.55), 0 0 22px rgba(96, 165, 250, 0.45), 0 0 48px rgba(96, 165, 250, 0.25)'
+            : '0 0 4px rgba(255, 255, 255, 0.25), 0 0 10px rgba(255, 255, 255, 0.15)',
+          transform: 'translateY(2px)',
+          animation: highlight ? 'auraBreath 8s ease-in-out infinite' : 'none'
+        }}>
           {value}
         </div>
       </div>
 
-      <div style={{ fontSize: '0.8rem', letterSpacing: '3px', color: '#64748b', marginBottom: '8px' }}>{label}</div>
-      <div style={{ fontSize: '0.8rem', color: '#94a3b8', maxWidth: '200px', lineHeight: '1.5' }}>{desc}</div>
+      <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(148, 163, 184, 0.85)', marginBottom: '16px', textShadow: '0 0 6px rgba(255, 255, 255, 0.08)' }}>{label}</div>
+      <div style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.6, color: 'rgba(203, 213, 225, 0.75)', maxWidth: '280px', textShadow: 'none' }}>{desc}</div>
 
       <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            `}</style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes auraBreath {
+          0%   { text-shadow: 0 0 8px rgba(96, 165, 250, 0.55), 0 0 18px rgba(96, 165, 250, 0.35); }
+          50%  { text-shadow: 0 0 12px rgba(96, 165, 250, 0.65), 0 0 28px rgba(96, 165, 250, 0.55), 0 0 52px rgba(96, 165, 250, 0.35); }
+          100% { text-shadow: 0 0 8px rgba(96, 165, 250, 0.55), 0 0 18px rgba(96, 165, 250, 0.35); }
+        }
+      `}</style>
     </div>
   );
 };

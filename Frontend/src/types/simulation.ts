@@ -9,7 +9,27 @@
  */
 
 /**
- * 10-dimensional state vector representing the disaster scenario at a single timestep
+ * Simulation metadata
+ */
+export interface SimulationMeta {
+    /** City name (e.g., "Delhi") */
+    city: string;
+
+    /** Disaster type (e.g., "earthquake") */
+    disaster: string;
+
+    /** Disaster magnitude (e.g., 7.0) */
+    magnitude: number;
+
+    /** Policy type used ("ppo" or "heuristic") */
+    policy: string;
+
+    /** Random seed for determinism (or null) */
+    seed: number | null;
+}
+
+/**
+ * State at a single timestep (normalized values)
  */
 export interface SimulationState {
     /** Earthquake intensity across zones (0.0-1.0) */
@@ -18,37 +38,22 @@ export interface SimulationState {
     /** Fraction of people not yet in safe shelters (0.0-1.0) */
     unsheltered: number;
 
-    /** Normalized available shelter space (0.0-1.0) */
-    shelter_capacity: number;
-
-    /** Normalized casualties from delayed evacuation (0.0-1.0) */
+    /** Absolute casualties count */
     casualties: number;
-
-    /** Average route congestion/bottleneck severity (0.0-1.0) */
-    congestion: number;
 
     /** Overall evacuation completion percentage (0.0-1.0) */
     evacuation_progress: number;
 
-    /** Current timestep / max_timesteps (0.0-1.0) */
-    time_normalized: number;
-
-    /** Emergency resources (vehicles, personnel) available (0.0-1.0) */
-    resources: number;
-
-    /** Network/communication infrastructure functioning (0.0-1.0) */
-    communication: number;
-
-    /** Population panic/disorder metric (0.0-1.0) */
-    panic: number;
+    /** Average route congestion/bottleneck severity (0.0-1.0) */
+    congestion: number;
 }
 
 /**
  * Action taken by the policy at a single timestep
  */
 export interface SimulationAction {
-    /** Action type index (0-4) */
-    type: number;
+    /** Action ID (0-4) */
+    id: number;
 
     /** Human-readable action name */
     name: "do_nothing" | "prioritize_vulnerable" | "distribute_evenly" | "focus_high_density" | "expedite_routes";
@@ -66,40 +71,71 @@ export interface SimulationStep {
 
     /** Action taken at this timestep */
     action: SimulationAction;
-
-    /** Reward received for taking this action */
-    reward: number;
 }
 
 /**
- * Performance metrics summarizing the entire simulation
+ * Geographic zone with risk level
  */
-export interface PerformanceMetrics {
-    /** Cumulative reward across all timesteps */
-    total_reward: number;
+export interface Zone {
+    /** Zone identifier (e.g., "rohini") */
+    id: string;
 
-    /** Number of victims successfully rescued */
-    victims_rescued: number;
+    /** Latitude */
+    lat: number;
 
-    /** Number of timesteps the simulation ran */
-    time_steps: number;
+    /** Longitude */
+    lng: number;
+
+    /** Risk level (0.0-1.0) */
+    risk: number;
+}
+
+/**
+ * Final performance metrics for AI simulation
+ */
+export interface FinalMetrics {
+    /** Absolute casualties count */
+    casualties: number;
 
     /** Success rate (0.0-1.0) */
     success_rate: number;
 
-    /** Policy type used for this simulation */
-    policy_type: string;
+    /** Number of timesteps to completion */
+    timesteps: number;
+
+    /** Cumulative RL reward */
+    total_reward: number;
+}
+
+/**
+ * Baseline (heuristic) performance metrics
+ */
+export interface BaselineMetrics {
+    /** Absolute casualties count */
+    casualties: number;
+
+    /** Success rate (0.0-1.0) */
+    success_rate: number;
 }
 
 /**
  * Complete simulation response from backend /api/simulate endpoint
  */
 export interface SimulationResponse {
+    /** Simulation metadata */
+    meta: SimulationMeta;
+
     /** Step-by-step trajectory of the simulation */
     trajectory: SimulationStep[];
 
-    /** Performance metrics summary */
-    metrics: PerformanceMetrics;
+    /** Geographic zones with risk levels */
+    zones: Zone[];
+
+    /** Final metrics for AI policy */
+    final_metrics: FinalMetrics;
+
+    /** Baseline metrics for comparison */
+    baseline_metrics: BaselineMetrics;
 }
 
 /**
@@ -122,4 +158,20 @@ export interface SimulationRequest {
 
     /** Optional seed for deterministic simulations */
     seed?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LEGACY TYPES (For backward compatibility with existing frontend code)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Use SimulationResponse.final_metrics instead
+ */
+export interface PerformanceMetrics {
+    total_reward: number;
+    avg_casualties: number;
+    avg_hazard: number;
+    avg_evacuation_progress: number;
+    total_timesteps: number;
+    policy_type: string;
 }

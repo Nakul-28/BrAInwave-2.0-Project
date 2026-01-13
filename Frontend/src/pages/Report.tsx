@@ -39,8 +39,8 @@ const Report: React.FC = () => {
   const { ppoResult, heuristicResult, scenarioConfig } = state;
 
   // Calculate Summary Stats
-  const improvement = ((ppoResult.metrics.victims_rescued - heuristicResult.metrics.victims_rescued) / heuristicResult.metrics.victims_rescued * 100).toFixed(1);
-  const successRate = (ppoResult.metrics.success_rate * 100).toFixed(1);
+  const improvement = ((ppoResult.final_metrics.casualties - heuristicResult.final_metrics.casualties) / heuristicResult.final_metrics.casualties * -100).toFixed(1);
+  const successRate = (ppoResult.final_metrics.success_rate * 100).toFixed(1);
   const date = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const handleDownload = () => {
@@ -138,21 +138,21 @@ const Report: React.FC = () => {
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: '12px', borderBottom: '1px solid #e2e8f0' }}>Victims Rescued</td>
-                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>{heuristicResult.metrics.victims_rescued}</td>
-                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ppoResult.metrics.victims_rescued}</td>
-                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#16a34a' }}>+{improvement}%</td>
+                <td style={{ padding: '12px', borderBottom: '1px solid #e2e8f0' }}>Casualties</td>
+                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>{heuristicResult.final_metrics.casualties}</td>
+                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>{ppoResult.final_metrics.casualties}</td>
+                <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#16a34a' }}>{improvement}%</td>
               </tr>
               <tr>
                 <td style={{ padding: '12px', borderBottom: '1px solid #e2e8f0' }}>Evacuation Success</td>
                 <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
-                  {(heuristicResult.metrics.success_rate * 100).toFixed(1)}%
+                  {(heuristicResult.final_metrics.success_rate * 100).toFixed(1)}%
                 </td>
                 <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>
-                  {(ppoResult.metrics.success_rate * 100).toFixed(1)}%
+                  {(ppoResult.final_metrics.success_rate * 100).toFixed(1)}%
                 </td>
                 <td style={{ textAlign: 'right', padding: '12px', borderBottom: '1px solid #e2e8f0', color: '#16a34a' }}>
-                  +{(ppoResult.metrics.success_rate * 100 - heuristicResult.metrics.success_rate * 100).toFixed(1)} pts
+                  +{(ppoResult.final_metrics.success_rate * 100 - heuristicResult.final_metrics.success_rate * 100).toFixed(1)} pts
                 </td>
               </tr>
             </tbody>
