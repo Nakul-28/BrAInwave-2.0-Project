@@ -86,8 +86,11 @@ export interface Zone {
     /** Longitude */
     lng: number;
 
-    /** Risk level (0.0-1.0) */
+    /** Risk level (0.0-1.0) - DEPRECATED: use risk_trajectory */
     risk: number;
+
+    /** Time-varying risk per timestep (0.0-1.0) */
+    risk_trajectory?: number[];
 }
 
 /**

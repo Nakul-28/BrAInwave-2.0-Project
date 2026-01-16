@@ -204,10 +204,14 @@ const LiveSimulationView: React.FC = () => {
 
         // Use backend zones[] directly - NO FRONTEND COMPUTATION
         const features = zones.map(zone => {
-            // Map backend risk to visual color status
+            // ✅ Read backend risk verbatim from risk_trajectory
+            // Fallback to static risk for backward compatibility
+            const currentRisk = zone.risk_trajectory?.[currentStepIndex] ?? zone.risk;
+
+            // Map backend risk to visual color status (UNCHANGED)
             let status = 'safe';
-            if (zone.risk > 0.6) status = 'critical';
-            else if (zone.risk > 0.3) status = 'risk';
+            if (currentRisk > 0.6) status = 'critical';
+            else if (currentRisk > 0.3) status = 'risk';
 
             return {
                 type: 'Feature' as const,
